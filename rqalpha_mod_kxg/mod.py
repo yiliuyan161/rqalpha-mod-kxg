@@ -50,7 +50,6 @@ class KXGMod(AbstractMod):
                     self._meta["origin_start_date"] = persist_meta.origin_start_date
 
 
-
     def on_trade(self, event):
         trade = event.trade
         self._recorder.append_trade(trade)
@@ -63,7 +62,7 @@ class KXGMod(AbstractMod):
     def tear_down(self, success, exception=None):
         if exception is None:
             # 仅当成功运行才写入数据
-            if self._recorder:
+            if hasattr(self, "_recorder"):
                 self._recorder.store_meta(self._meta)
                 self._recorder.flush()
 
