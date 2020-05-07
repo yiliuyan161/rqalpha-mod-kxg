@@ -39,7 +39,7 @@ class Trade(ModelBase):
     last_price = Column('last_price', Float())
     last_quantity = Column('last_quantity', Float())
     transaction_cost = Column('transaction_cost', Float())
-    side = Column('side', INT(2))
+    side = Column('side', INT())
     position_effect = Column('position_effect', String(30))
 
 
