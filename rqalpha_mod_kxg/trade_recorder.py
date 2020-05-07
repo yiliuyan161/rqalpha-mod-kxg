@@ -1,3 +1,4 @@
+from rqalpha.const import SIDE
 from sqlalchemy import *
 from sqlalchemy import event
 from sqlalchemy.orm import *
@@ -13,7 +14,6 @@ TRADE_CSV_HEADER = [
     "last_price",
     "last_quantity",
     "transaction_cost",
-    "side",
     "position_effect",
 ]
 
@@ -21,9 +21,9 @@ PORTFOLIO_CSV_HEADER = [
     "portfolio_value",
     "market_value",
     "cash",
-    "daily_pnl",
-    "daily_returns",
-    "total_returns",
+    # "daily_pnl",
+    # "daily_returns",
+    # "total_returns",
 ]
 
 ModelBase = declarative_base()
@@ -39,7 +39,7 @@ class Trade(ModelBase):
     last_price = Column('last_price', Float())
     last_quantity = Column('last_quantity', Float())
     transaction_cost = Column('transaction_cost', Float())
-    side = Column('side', String(20))
+    side = Column('side', INT(2))
     position_effect = Column('position_effect', String(30))
 
 
@@ -74,6 +74,7 @@ class Meta(ModelBase):
     start_date = Column('start_date', String(20))
     end_date = Column('end_date', String(20))
     last_run_time = Column('last_run_time', String(20))
+    cash = Column('cash',Float(20))
 
 
 def add_float_encoders(conn, cursor, query, *args):
@@ -105,10 +106,11 @@ class MysqlRecorder:
                     'start_date': meta['start_date'],
                     'end_date': meta['end_date'],
                     'last_run_time': meta['last_run_time'],
+                    'cash': meta['cash']
                 })
         else:
             mt = Meta(strategy_id=meta['strategy_id'], origin_start_date=meta['origin_start_date'],
-                      start_date=meta['start_date'], end_date=meta['end_date'], last_run_time=meta['last_run_time'])
+                      start_date=meta['start_date'], end_date=meta['end_date'], last_run_time=meta['last_run_time'],cash=meta['cash'])
             self.session.add(mt)
 
     def _portfolio2obj(self, dt, portfolio):
@@ -124,7 +126,10 @@ class MysqlRecorder:
         for key in TRADE_CSV_HEADER:
             setattr(td, key, getattr(trade, key))
         td.position_effect = str(td.position_effect)
-        td.side = str(td.side)
+        if trade.side == SIDE.BUY:
+            td.side = 1
+        else:
+            td.side = -1
         td.strategy_id = self._strategy_id
         self._trade_list.append(td)
 

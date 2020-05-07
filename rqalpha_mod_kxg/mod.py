@@ -40,6 +40,7 @@ class KXGMod(AbstractMod):
                 "start_date": env.config.base.start_date.strftime("%Y-%m-%d"),
                 "end_date": env.config.base.end_date.strftime("%Y-%m-%d"),
                 "last_run_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "cash": env.config.base.accounts.stock
             }
             persist_meta = self._recorder.load_meta()
             if persist_meta:
@@ -48,6 +49,7 @@ class KXGMod(AbstractMod):
                         (u"current start_date {} is before last end_date {}").format(self._meta["start_date"],persist_meta.end_date))
                 else:
                     self._meta["origin_start_date"] = persist_meta.origin_start_date
+                    self._meta['cash']= persist_meta.cash
 
 
     def on_trade(self, event):
@@ -58,6 +60,7 @@ class KXGMod(AbstractMod):
         calendar_dt = self._env.calendar_dt.date()
         portfolio = self._env.portfolio
         self._recorder.append_portfolio(calendar_dt, portfolio)
+        self._meta['cash'] = portfolio.cash()
 
     def tear_down(self, success, exception=None):
         if exception is None:
