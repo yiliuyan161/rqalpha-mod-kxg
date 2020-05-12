@@ -1,5 +1,6 @@
 from typing import Dict
 
+from cachier import cachier
 from rqalpha.events import EVENT
 from rqalpha.utils import RqAttrDict
 
@@ -81,6 +82,7 @@ class KXGMod(AbstractMod):
                                         EXECUTION_PHASE.ON_BAR,
                                         EXECUTION_PHASE.AFTER_TRADING,
                                         EXECUTION_PHASE.SCHEDULED)
+        @cachier(stale_after=datetime.timedelta(hours=12))
         def read_sql_query(sql):
             # type (str)->pandas.DataFrame
             df = pd.read_sql_query(sql=sql, con=self.data_source.db_url)
