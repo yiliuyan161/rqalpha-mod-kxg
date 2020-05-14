@@ -30,6 +30,7 @@ def adjust_bars(bars, fields, adjust_type, adjust_orig):
                 bars[fields] = bars[fields] * bars['adj_factor'] / float(bars['adj_factor'][0])
 
         return bars[fields]
+    fields.append("adj_factor")
     result = np.copy(bars if fields is None else bars[fields])
     for f in result.dtype.names:
         if f in PRICE_FIELDS:
