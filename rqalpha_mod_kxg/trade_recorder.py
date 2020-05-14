@@ -42,6 +42,9 @@ class Trade(ModelBase):
     side = Column('side', INT())
     position_effect = Column('position_effect', String(30))
 
+    def __str__(self):
+        return "<order_book_id:{order_book_id},last_price:{last_price},datetime:{datetime}>".format(order_book_id=self.order_book_id,last_price=self.last_price,datetime=self.datetime)
+
 
 class Portfolio(ModelBase):
     __tablename__ = "strategy_portfolio"
@@ -88,7 +91,7 @@ class MysqlRecorder:
         self.engine = create_engine(db_url)
         self.metadata = MetaData(self.engine)
         self._strategy_id = strategy_id
-        self._trade_list = []
+        self.trade_list = []
         self._portfolios_dict = defaultdict(list)
         self.session = sessionmaker(self.engine)()
         event.listen(self.engine, "before_cursor_execute", add_float_encoders)
@@ -131,16 +134,38 @@ class MysqlRecorder:
         else:
             td.side = -1
         td.strategy_id = self._strategy_id
-        self._trade_list.append(td)
+        self.trade_list.append(td)
 
     def append_portfolio(self, dt, portfolio):
         self._portfolios_dict["portfolio"].append(self._portfolio2obj(dt, portfolio))
 
     def flush(self):
-        if self._trade_list:
-            self.session.add_all(self._trade_list)
+        if self.trade_list:
+            self.session.add_all(self.trade_list)
         for name, p_list in self._portfolios_dict.items():
             for portfolio_dict in p_list:
                 self.session.add(portfolio_dict)
         self.session.commit()
         self.session.close()
+
+class MemoryRecorder:
+    def __init__(self):
+        self.trade_list=[]
+        self.portfilio_list=[]
+
+    def append_trade(self, trade):
+        td = Trade()
+        for key in TRADE_CSV_HEADER:
+            setattr(td, key, getattr(trade, key))
+        td.position_effect = str(td.position_effect)
+        if trade.side == SIDE.BUY:
+            td.side = 1
+        else:
+            td.side = -1
+        self.trade_list.append(td)
+
+    def append_portfolio(self, dt, portfolio):
+        self.portfilio_list.append(portfolio)
+
+
+

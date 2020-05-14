@@ -9,6 +9,7 @@ from rqalpha.interface import AbstractMod
 from rqalpha.environment import Environment
 import datetime
 from .trade_recorder import MysqlRecorder
+from .trade_recorder import MemoryRecorder
 from .price_board import KXGPriceBoard
 
 
@@ -29,11 +30,11 @@ class KXGMod(AbstractMod):
         self._inject_api()
         env.set_data_source(self.data_source)
         env.set_price_board(KXGPriceBoard())
-
+        env.event_bus.add_listener(EVENT.TRADE, self.on_trade)
+        env.event_bus.add_listener(EVENT.POST_SETTLEMENT, self.on_settlement)
         # 如果有strategy_id 保存交易记录到数据库，没有就不保存
         if 'strategy_id' in mod_config.keys():
-            env.event_bus.add_listener(EVENT.TRADE, self.on_trade)
-            env.event_bus.add_listener(EVENT.POST_SETTLEMENT, self.on_settlement)
+            self._save_to_db = True
             self._recorder = MysqlRecorder(mod_config.strategy_id, mod_config.db_url)
             self._meta = {
                 "strategy_id": mod_config.strategy_id,
@@ -47,10 +48,21 @@ class KXGMod(AbstractMod):
             if persist_meta:
                 if persist_meta.end_date >= self._meta["start_date"]:
                     raise RuntimeError(
-                        (u"current start_date {} is before last end_date {}").format(self._meta["start_date"],persist_meta.end_date))
+                        (u"current start_date {} is before last end_date {}").format(self._meta["start_date"],
+                                                                                     persist_meta.end_date))
                 else:
                     self._meta["origin_start_date"] = persist_meta.origin_start_date
-                    self._meta['cash']= persist_meta.cash
+                    self._meta['cash'] = persist_meta.cash
+        else:
+            self._recorder = MemoryRecorder()
+            self._meta ={
+                "origin_start_date": env.config.base.start_date.strftime("%Y-%m-%d"),
+                "start_date": env.config.base.start_date.strftime("%Y-%m-%d"),
+                "end_date": env.config.base.end_date.strftime("%Y-%m-%d"),
+                "last_run_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "cash": env.config.base.accounts['STOCK']
+            }
+
 
 
     def on_trade(self, event):
@@ -66,7 +78,7 @@ class KXGMod(AbstractMod):
     def tear_down(self, success, exception=None):
         if exception is None:
             # 仅当成功运行才写入数据
-            if hasattr(self, "_recorder"):
+            if hasattr(self, "_save_to_db"):
                 self._recorder.store_meta(self._meta)
                 self._recorder.flush()
 
@@ -75,6 +87,8 @@ class KXGMod(AbstractMod):
         from rqalpha.execution_context import ExecutionContext
         from rqalpha.const import EXECUTION_PHASE
         import pandas as pd
+        from rqalpha.model.order import Order
+        from .trade_recorder import Trade
 
         @export_as_api
         @ExecutionContext.enforce_phase(EXECUTION_PHASE.ON_INIT,
@@ -87,3 +101,20 @@ class KXGMod(AbstractMod):
             # type (str)->pandas.DataFrame
             df = pd.read_sql_query(sql=sql, con=self.data_source.db_url)
             return df
+
+        @export_as_api
+        @ExecutionContext.enforce_phase(EXECUTION_PHASE.ON_INIT,
+                                        EXECUTION_PHASE.BEFORE_TRADING,
+                                        EXECUTION_PHASE.ON_BAR,
+                                        EXECUTION_PHASE.AFTER_TRADING,
+                                        EXECUTION_PHASE.SCHEDULED)
+        def query_trades(order_book_id):
+            # type (str)->Trade
+            if not hasattr(self, "_save_to_db"):
+                # 没有strategy_id 直接查询内存列表
+                return [trade for trade in self._recorder.trade_list if trade.order_book_id==order_book_id]
+            else:
+                return self._recorder.session.query(Trade).filter(Trade.order_book_id == order_book_id).all()
+
+
+
