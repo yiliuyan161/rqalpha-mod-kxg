@@ -19,7 +19,7 @@ setup(
     license='Apache License v2',
     package_data={'': ['*.*']},
     url='https://github.com/chenjiajia/rqalpha_mod_kxg',
-    install_requires=[str(ir.requirement) for ir in parse_requirements("requirements.txt", session=False)],
+    install_requires=[str(ir.requirement) if hasattr(ir, 'requirement') else str(ir.req) for ir in parse_requirements("requirements.txt", session=False)],
     zip_safe=False,
     classifiers=[
         'Programming Language :: Python',
