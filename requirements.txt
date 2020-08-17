@@ -20,8 +20,8 @@ python-dateutil==2.8.1
 pytz==2019.3
 PyYAML==5.3.1
 requests==2.23.0
-rqalpha==4.0.0
-rqrisk==0.0.12
+rqalpha>=4.0.0
+rqrisk>=0.0.12
 simplejson==3.17.0
 six==1.14.0
 soupsieve==2.0
