@@ -11,7 +11,7 @@ importlib-metadata==1.6.0
 jsonpickle==1.4
 kiwisolver==1.2.0
 Logbook==1.5.3
-lxml==4.5.0
+lxml==4.6.5
 matplotlib==3.2.1
 numpy==1.18.3
 pandas==1.0.3
